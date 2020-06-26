@@ -1,0 +1,155 @@
+---
+title: "Standard Deviation Transition Temperature (Tt) Analysis with batch_plot"
+author: "David Tyrpak"
+output:
+  pdf_document:
+    fig_caption: no
+    fig_crop: no
+    fig_height: 8
+    fig_width: 9
+  html_notebook:
+    fig_caption: no
+    fig_crop: no
+    fig_height: 10
+    fig_width: 12
+  html_document:
+    df_print: paged
+geometry: margin=1cm
+
+---
+
+
+# INTRODUCTION
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This notebook highlights the standard deviation approach to 
+determing intracellular transition temperature
+
+Let's begin by loading and cleaning the data.
+
+## Loading data
+We will load StandardDevData.txt which contains pixel standard deviation values for the GFP-V60 cells.
+Each row in this tab delimited txt file contains the pixel standard deviation values
+for that particular cell at that particular temperature.
+```{r}
+example.df <- read.table(file.choose(), header = T) #choose StandardDevData.txt
+```
+
+## The batch_plot function
+
+This function will calculate the Tt for each cell in our data frame (after we organize the data).
+These are the arguments of the function:
+
+list_of_lists: list class; this is a list containing lists of row indexes for individual cells.
+We will create this data structure further below.
+  
+data_frame: data frame class; the data frame that contains your temperature and standard deviation values.
+In our case, the data_frame is example.df
+  
+threshold_limit: int class; how many standard deviations away from the baseline you want your threshold to be. 
+  
+baseline_end: int class; the number of data points you want to include 
+in your calculation of the baseline standard deviation (e.g. "baseline_end = 20" means the 
+first 20 points of the data set are used in the calculation of the mean and standard deviation)
+
+temp.column.index: int class; the column number that contains your temperature data
+
+standard.dev.column.index: int class; the column number that contains your pixel standard deviation data
+
+```{r}
+batch_plot <- function(list_of_lists, data_frame, threshold_limit = 3, baseline_end = 20, temp.column.index, standard.dev.column.index){
+  
+  
+  
+  indexes <- lapply(list_of_lists, function(x) {c(start  = x[1], stop = tail(x, n = 1))}) ##retrieve first and last index for that well/cell
+  
+  i = 1
+  Tts <- vector(mode = "numeric", length = length(list_of_lists)) # will store the Tts for each cell
+  
+  ##for loop to determine Tt and plot a scatter plot for each cell in list_of_lists
+  for (index in indexes) {
+    start = index[1]
+    stop = index[2]
+    
+    temps <- data_frame[ ,temp.column.index][start:stop] ##Celsius data points for this cell
+    
+    sds <- data_frame[,standard.dev.column.index][start:stop] ##corresponding standard deviation points for this cell
+    
+    mean <- mean(sds[1:baseline_end]) ##mean of the datapoints specified by baseline_end
+    
+    std_dv <- sd(sds[1:baseline_end]) ##calculate the standard deviation around these points
+    
+    std_normals <- (sds - mean)/std_dv ## convert the standard deviation pixel values to a standard normal distribution
+    
+    #threshold <- threshold_limit*std_dv ##threshold is threshold_limit times the standard deviation from the baseline/mean
+    
+    Tt <- which(std_normals > threshold_limit)[1]  ## first data point which crosses the threshold
+    
+    Tts[i] <- temps[Tt] ##update Tts vector to contain the Tt for this cell
+    
+    
+    #if you want to save each plot, you can call the tiff function. 
+    #tiff(filename = paste0(names(indexes)[i], ".tiff"), width  = 7, height = 5, units = "in", res = 300)
+    
+     par(mar=c(5,6,4,1)+.1) #adjust maregins so that axis titles arent cutoff
+     
+    plot(temps, std_normals, xlab = "Celsius", ylab = "Z-Score", main = names(indexes)[i], ylim = c(-10, 10), cex.main=2, cex.lab=2, cex.axis=2)
+    abline(h = 0) ##mean of first 20 points will be zero because we converted to standard normal
+    abline(v = Tts[i], col = "red", pch = 19)
+    abline(h = 0 + threshold_limit, lty = 4, col = "red") ## 
+    # abline(h = 0 - threshold_limit, lty = 4, col = "red") ##optional line beloiew the baseline
+    
+    #dev.off() only need this if you want to automatically save with tiff() function
+    i = i +1
+    
+    
+  }
+  names(Tts) <- names(indexes)
+  Tts
+}
+
+```
+
+### Organizing Data for batch_plot
+
+We need to extract the row numbers (aka row indices) for each
+unique cell in our example.df data.frame object.
+We can use the cellID column, as it uniquely identifies each cell.
+```{r}
+
+indices <- sapply(unique(example.df$cellID), function(x) which(example.df$cellID == x)); indices
+names(indices) <- unique(example.df$cellID)
+indices
+
+```
+
+### Running batch_plot
+
+Now we can use the batch_plot function and examine different numbers of 
+baseline data points and thresholds.
+```{r}
+# default values
+Tts.a <- batch_plot(GFPV60.indices, GFPV60.df, baseline_end = 20, threshold_limit = 3, temp.column.index = 4, 
+                  standard.dev.column.index = 5)
+
+mean(na.omit(Tts.a)) # get the mean, after removing NA cells (i.e. cells which didnt pass the threshold)
+
+# default baseline and threshold of 5
+Tts.b <- batch_plot(GFPV60.indices, GFPV60.df, baseline_end = 20, threshold_limit = 5, temp.column.index = 4, 
+                  standard.dev.column.index = 5)
+
+mean(na.omit(Tts.b))
+
+
+#change baseline number to 10 and keep threshold of 5
+Tts.c <- batch_plot(GFPV60.indices, GFPV60.df, baseline_end = 10, threshold_limit = 5, temp.column.index = 4, 
+                  standard.dev.column.index = 5)
+
+mean(na.omit(Tts.c))
+
+
+
+```
+
