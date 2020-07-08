@@ -1,0 +1,7 @@
+# Intracellular-ELP-Transition-Temperature-Pipeline
+This is the R code that I wrote to calculate the intracellular transition temperature of our ELP fusion proteins. 
+The code works by analyzing the pixel value standard deviation.
+
+To analyze the standard deviation data and determine the temperature at which phase transition occurred, I wrote an R function named batch_plot which calculates the baseline standard deviation from the initial <n> images of the temperature ramp (this <n> is specified by the user, but the default is 20); batch_plot then determines the temperature at which the standard deviation shifts above a specified threshold beyond this baseline standard deviation. This threshold is again specified by the user, but the default is 3, reflecting three standard deviations away from the baseline standard deviation (Another suitable threshold could be 2, reflecting two standard deviations away from the baseline, which mimics the 0.05 threshold often used for p-values. Relatedly, users could also select higher thresholds, 5 for example, to account for the increased probability of false positives due to testing multiple cells). The temperature/image slice at which the standard deviation shifts above the specified threshold is recorded as the intracellular Tt. In addition to recording these measurements for each cell, batch_plot also plots the standard deviation data and indicates where on the graph the threshold was passed (Figure S2). The code for batch_plot and some example data is provided in an R notebook in the supplementary materials. 
+
+
