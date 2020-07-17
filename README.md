@@ -1,4 +1,6 @@
 # Intracellular-ELP-Transition-Temperature-Pipeline
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3950577.svg)](https://doi.org/10.5281/zenodo.3950577)
+
 This is the R code that I wrote to calculate the intracellular transition temperature of Elastin-like polypeptide (ELP) fusion proteins.
 This code was developed as part of my thesis.
 
